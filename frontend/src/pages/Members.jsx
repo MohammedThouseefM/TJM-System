@@ -13,7 +13,8 @@ const Members = () => {
   const [roleFilter, setRoleFilter] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
-  const [form, setForm] = useState({ name: '', email: '', password: '', phone: '', role: 'member', status: 'active' });
+  const today = new Date().toISOString().split('T')[0];
+  const [form, setForm] = useState({ name: '', email: '', password: '', phone: '', role: 'member', status: 'active', joining_date: today });
   const [pagination, setPagination] = useState({ page: 1, totalPages: 1 });
 
   const fetchMembers = async (page = 1) => {
@@ -32,21 +33,22 @@ const Members = () => {
     e.preventDefault();
     try {
       if (editing) {
-        await membersAPI.update(editing.id, { name: form.name, phone: form.phone, role: form.role, status: form.status });
+        await membersAPI.update(editing.id, { name: form.name, phone: form.phone, role: form.role, status: form.status, joining_date: form.joining_date });
         toast.success('Member updated.');
       } else {
         await membersAPI.create(form);
         toast.success('Member added.');
       }
       setModalOpen(false); setEditing(null);
-      setForm({ name: '', email: '', password: '', phone: '', role: 'member', status: 'active' });
+      setForm({ name: '', email: '', password: '', phone: '', role: 'member', status: 'active', joining_date: today });
       fetchMembers();
     } catch (err) { toast.error(err.response?.data?.error || 'Failed to save.'); }
   };
 
   const handleEdit = (m) => {
     setEditing(m);
-    setForm({ name: m.name, email: m.email, password: '', phone: m.phone || '', role: m.role, status: m.status });
+    const jd = m.joining_date ? new Date(m.joining_date).toISOString().split('T')[0] : today;
+    setForm({ name: m.name, email: m.email, password: '', phone: m.phone || '', role: m.role, status: m.status, joining_date: jd });
     setModalOpen(true);
   };
 
@@ -71,7 +73,7 @@ const Members = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <h1 className="page-title">Members</h1>
         {isAdmin && (
-          <button onClick={() => { setEditing(null); setForm({ name:'', email:'', password:'', phone:'', role:'member', status:'active' }); setModalOpen(true); }}
+          <button onClick={() => { setEditing(null); setForm({ name:'', email:'', password:'', phone:'', role:'member', status:'active', joining_date: today }); setModalOpen(true); }}
             className="btn-primary flex items-center gap-2"><HiPlus /> Add Member</button>
         )}
       </div>
@@ -174,9 +176,20 @@ const Members = () => {
               </div>
             </>
           )}
-          <div>
-            <label className="block text-sm font-medium text-surface-300 mb-1">Phone</label>
-            <input value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} className="input-field" />
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-surface-300 mb-1">Phone</label>
+              <input value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} className="input-field" placeholder="+91-XXXXXXXXXX" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-surface-300 mb-1">📅 Joining Date</label>
+              <input
+                type="date"
+                value={form.joining_date}
+                onChange={e => setForm({...form, joining_date: e.target.value})}
+                className="input-field"
+              />
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -188,16 +201,14 @@ const Members = () => {
                 <option value="route_planner">Route Planner</option>
               </select>
             </div>
-            {editing && (
-              <div>
-                <label className="block text-sm font-medium text-surface-300 mb-1">Status</label>
-                <select value={form.status} onChange={e => setForm({...form, status: e.target.value})} className="select-field">
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                  <option value="leave">Leave</option>
-                </select>
-              </div>
-            )}
+            <div>
+              <label className="block text-sm font-medium text-surface-300 mb-1">Status</label>
+              <select value={form.status} onChange={e => setForm({...form, status: e.target.value})} className="select-field">
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+                <option value="leave">Leave</option>
+              </select>
+            </div>
           </div>
           <div className="flex gap-3 pt-2">
             <button type="submit" className="btn-primary flex-1">{editing ? 'Update' : 'Add Member'}</button>

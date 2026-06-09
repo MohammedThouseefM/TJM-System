@@ -98,7 +98,7 @@ const getMemberById = async (req, res) => {
  */
 const addMember = async (req, res) => {
   try {
-    const { name, email, password, phone, role } = req.body;
+    const { name, email, password, phone, role, joining_date } = req.body;
 
     const error = validateRequired(req.body, ['name', 'email', 'password']);
     if (error) return apiResponse(res, 400, { error });
@@ -111,16 +111,18 @@ const addMember = async (req, res) => {
 
     const password_hash = await bcrypt.hash(password, 12);
     const memberRole = ['admin', 'member', 'accountant', 'route_planner'].includes(role) ? role : 'member';
+    // Use provided joining_date or fall back to today
+    const joiningDate = joining_date || new Date().toISOString().split('T')[0];
 
     const [result] = await pool.execute(
       `INSERT INTO users (name, email, password_hash, phone, role, joining_date) 
-       VALUES (?, ?, ?, ?, ?, CURRENT_DATE)`,
-      [name, email, password_hash, phone || null, memberRole]
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [name, email, password_hash, phone || null, memberRole, joiningDate]
     );
 
     apiResponse(res, 201, {
       message: 'Member added successfully.',
-      member: { id: result.insertId, name, email, role: memberRole, phone }
+      member: { id: result.insertId, name, email, role: memberRole, phone, joining_date: joiningDate }
     });
   } catch (error) {
     console.error('Add member error:', error);
@@ -134,7 +136,7 @@ const addMember = async (req, res) => {
  */
 const updateMember = async (req, res) => {
   try {
-    const { name, phone, role, status, current_duty } = req.body;
+    const { name, phone, role, status, current_duty, joining_date } = req.body;
     const updates = [];
     const values = [];
 
@@ -147,6 +149,7 @@ const updateMember = async (req, res) => {
       updates.push('status = ?'); values.push(status);
     }
     if (current_duty !== undefined) { updates.push('current_duty = ?'); values.push(current_duty); }
+    if (joining_date) { updates.push('joining_date = ?'); values.push(joining_date); }
 
     if (updates.length === 0) {
       return apiResponse(res, 400, { error: 'No fields to update.' });
