@@ -35,20 +35,40 @@ const getTransactions = async (req, res) => {
   } catch (error) { console.error('Get transactions error:', error); apiResponse(res, 500, { error: 'Failed to fetch transactions.' }); }
 };
 
-// Add a new transaction
+// Add a new transaction (supports single or multiple members)
 const addTransaction = async (req, res) => {
   try {
-    const { user_id, type, amount, description, category, transaction_date } = req.body;
-    const error = validateRequired(req.body, ['user_id', 'type', 'amount']);
-    if (error) return apiResponse(res, 400, { error });
+    const { user_ids, user_id, type, amount, description, category, transaction_date } = req.body;
+
+    // Support both single user_id and array user_ids
+    const targetIds = user_ids && Array.isArray(user_ids) && user_ids.length > 0
+      ? user_ids
+      : user_id ? [user_id] : [];
+
+    if (targetIds.length === 0) return apiResponse(res, 400, { error: 'At least one member is required.' });
+    if (!type) return apiResponse(res, 400, { error: 'type is required.' });
+    if (!amount) return apiResponse(res, 400, { error: 'amount is required.' });
     if (!['credit', 'debit'].includes(type)) return apiResponse(res, 400, { error: 'Type must be credit or debit.' });
     if (parseFloat(amount) <= 0) return apiResponse(res, 400, { error: 'Amount must be > 0.' });
 
-    const [result] = await pool.execute(
-      `INSERT INTO transactions (user_id, type, amount, description, category, transaction_date, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [user_id, type, parseFloat(amount), description || null, category || 'other', transaction_date || getToday(), req.user.id]
-    );
-    apiResponse(res, 201, { message: 'Transaction recorded.', transaction: { id: result.insertId } });
+    const txDate = transaction_date || getToday();
+    const txCategory = category || 'other';
+    const txDesc = description || null;
+    const txAmount = parseFloat(amount);
+
+    let created = 0;
+    for (const uid of targetIds) {
+      await pool.execute(
+        `INSERT INTO transactions (user_id, type, amount, description, category, transaction_date, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [uid, type, txAmount, txDesc, txCategory, txDate, req.user.id]
+      );
+      created++;
+    }
+
+    apiResponse(res, 201, {
+      message: `${created} transaction${created > 1 ? 's' : ''} recorded successfully.`,
+      count: created
+    });
   } catch (error) { console.error('Add transaction error:', error); apiResponse(res, 500, { error: 'Failed to add transaction.' }); }
 };
 
