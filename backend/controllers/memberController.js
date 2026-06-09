@@ -50,8 +50,9 @@ const getAllMembers = async (req, res) => {
     const total = countResult[0].total;
 
     // Get paginated results
+    // Inline LIMIT/OFFSET as integers (TiDB doesn't accept them as bound params)
     query += ` ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}`;
-    const [members] = await pool.execute(query, params);
+    const [members] = await pool.query(query, params);
 
     apiResponse(res, 200, {
       members,

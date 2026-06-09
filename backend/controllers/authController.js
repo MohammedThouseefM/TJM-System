@@ -103,7 +103,7 @@ const login = async (req, res) => {
       user
     });
   } catch (error) {
-    console.error('Login error:', error);
+    console.error('Login error details:', error.code, error.message);
     apiResponse(res, 500, { error: 'Login failed. Please try again.' });
   }
 };

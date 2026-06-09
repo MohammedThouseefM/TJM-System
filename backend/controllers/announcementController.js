@@ -8,8 +8,9 @@ const getAnnouncements = async (req, res) => {
   try {
     const { limit, offset, page } = getPagination(req.query);
     const [countResult] = await pool.execute('SELECT COUNT(*) as total FROM announcements WHERE is_active = 1');
-    const [announcements] = await pool.execute(
-      `SELECT a.*, u.name as created_by_name FROM announcements a JOIN users u ON a.created_by = u.id WHERE a.is_active = 1 ORDER BY a.priority = 'urgent' DESC, a.created_at DESC LIMIT ${limit} OFFSET ${offset}`
+    const [announcements] = await pool.query(
+      `SELECT a.*, u.name as created_by_name FROM announcements a JOIN users u ON a.created_by = u.id WHERE a.is_active = 1 ORDER BY a.priority = 'urgent' DESC, a.created_at DESC LIMIT ? OFFSET ?`,
+      [limit, offset]
     );
     apiResponse(res, 200, { announcements, pagination: { page, limit, total: countResult[0].total, totalPages: Math.ceil(countResult[0].total / limit) } });
   } catch (error) { console.error(error); apiResponse(res, 500, { error: 'Failed to fetch announcements.' }); }

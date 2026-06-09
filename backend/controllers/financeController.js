@@ -28,8 +28,8 @@ const getTransactions = async (req, res) => {
     if (date_to) { query += ' AND t.transaction_date <= ?'; countQuery += ' AND t.transaction_date <= ?'; params.push(date_to); countParams.push(date_to); }
 
     const [countResult] = await pool.execute(countQuery, countParams);
-    query += ` ORDER BY t.transaction_date DESC, t.created_at DESC LIMIT ${limit} OFFSET ${offset}`;
-    const [transactions] = await pool.execute(query, params);
+    query += ` ORDER BY t.transaction_date DESC, t.created_at DESC LIMIT ${parseInt(limit)} OFFSET ${parseInt(offset)}`;
+    const [transactions] = await pool.query(query, params);
 
     apiResponse(res, 200, { transactions, pagination: { page, limit, total: countResult[0].total, totalPages: Math.ceil(countResult[0].total / limit) } });
   } catch (error) { console.error('Get transactions error:', error); apiResponse(res, 500, { error: 'Failed to fetch transactions.' }); }

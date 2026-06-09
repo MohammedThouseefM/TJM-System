@@ -1,7 +1,7 @@
 /**
  * Database Initialization Script
  * Creates the jamat_db database and all required tables in TiDB
- * 
+ *
  * Usage: npm run init-db
  */
 const mysql = require('mysql2/promise');
@@ -11,7 +11,6 @@ const initDatabase = async () => {
   let connection;
 
   try {
-    // Step 1: Connect without specifying a database to create it
     console.log('🔄 Connecting to TiDB Cloud...');
     connection = await mysql.createConnection({
       host: process.env.DB_HOST,
@@ -22,14 +21,12 @@ const initDatabase = async () => {
     });
     console.log('✅ Connected to TiDB Cloud');
 
-    // Step 2: Create database if not exists
     const dbName = process.env.DB_NAME || 'jamat_db';
-    console.log(`🔄 Creating database "${dbName}"...`);
+    console.log(`🔄 Creating/using database "${dbName}"...`);
     await connection.execute(`CREATE DATABASE IF NOT EXISTS \`${dbName}\``);
     await connection.execute(`USE \`${dbName}\``);
     console.log(`✅ Database "${dbName}" ready`);
 
-    // Step 3: Create all tables
     console.log('🔄 Creating tables...');
 
     // ── Users Table ──────────────────────────────────────────────
@@ -41,7 +38,7 @@ const initDatabase = async () => {
         password_hash VARCHAR(255) NOT NULL,
         phone VARCHAR(20) DEFAULT NULL,
         role ENUM('admin', 'member', 'accountant', 'route_planner') DEFAULT 'member',
-        joining_date DATE DEFAULT (CURRENT_DATE),
+        joining_date DATE DEFAULT NULL,
         status ENUM('active', 'inactive', 'leave') DEFAULT 'active',
         current_duty VARCHAR(100) DEFAULT NULL,
         avatar VARCHAR(255) DEFAULT NULL,
@@ -49,9 +46,9 @@ const initDatabase = async () => {
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       )
     `);
-    console.log('   ✅ users table created');
+    console.log('   ✅ users');
 
-    // ── Transactions Table (Financial Accounting) ────────────────
+    // ── Transactions Table ───────────────────────────────────────
     await connection.execute(`
       CREATE TABLE IF NOT EXISTS transactions (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -69,9 +66,9 @@ const initDatabase = async () => {
         INDEX idx_date (transaction_date)
       )
     `);
-    console.log('   ✅ transactions table created');
+    console.log('   ✅ transactions');
 
-    // ── Routes Table (Travel Planning) ───────────────────────────
+    // ── Routes Table ─────────────────────────────────────────────
     await connection.execute(`
       CREATE TABLE IF NOT EXISTS routes (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -92,9 +89,9 @@ const initDatabase = async () => {
         INDEX idx_dates (date_from, date_to)
       )
     `);
-    console.log('   ✅ routes table created');
+    console.log('   ✅ routes');
 
-    // ── Tasks Table (Daily Task Management) ──────────────────────
+    // ── Tasks Table ──────────────────────────────────────────────
     await connection.execute(`
       CREATE TABLE IF NOT EXISTS tasks (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -114,7 +111,7 @@ const initDatabase = async () => {
         INDEX idx_assigned (assigned_to)
       )
     `);
-    console.log('   ✅ tasks table created');
+    console.log('   ✅ tasks');
 
     // ── Duty Roster Table ────────────────────────────────────────
     await connection.execute(`
@@ -131,11 +128,10 @@ const initDatabase = async () => {
         FOREIGN KEY (assigned_to) REFERENCES users(id) ON DELETE CASCADE,
         FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
         INDEX idx_date (duty_date),
-        INDEX idx_assigned (assigned_to),
-        UNIQUE KEY unique_duty (duty_type, assigned_to, duty_date, shift)
+        INDEX idx_assigned (assigned_to)
       )
     `);
-    console.log('   ✅ duty_roster table created');
+    console.log('   ✅ duty_roster');
 
     // ── Attendance Table ─────────────────────────────────────────
     await connection.execute(`
@@ -153,7 +149,7 @@ const initDatabase = async () => {
         INDEX idx_date (attendance_date)
       )
     `);
-    console.log('   ✅ attendance table created');
+    console.log('   ✅ attendance');
 
     // ── Meals Table ──────────────────────────────────────────────
     await connection.execute(`
@@ -176,7 +172,7 @@ const initDatabase = async () => {
         UNIQUE KEY unique_meal (meal_date, meal_type)
       )
     `);
-    console.log('   ✅ meals table created');
+    console.log('   ✅ meals');
 
     // ── Announcements Table ──────────────────────────────────────
     await connection.execute(`
@@ -193,7 +189,7 @@ const initDatabase = async () => {
         INDEX idx_priority (priority)
       )
     `);
-    console.log('   ✅ announcements table created');
+    console.log('   ✅ announcements');
 
     // ── Reminders Table ──────────────────────────────────────────
     await connection.execute(`
@@ -213,7 +209,7 @@ const initDatabase = async () => {
         INDEX idx_target (target_user_id)
       )
     `);
-    console.log('   ✅ reminders table created');
+    console.log('   ✅ reminders');
 
     console.log('\n🎉 All tables created successfully!');
     console.log('📝 Next step: Run "npm run seed" to create the admin user.\n');
@@ -223,9 +219,7 @@ const initDatabase = async () => {
     console.error(error);
     process.exit(1);
   } finally {
-    if (connection) {
-      await connection.end();
-    }
+    if (connection) await connection.end();
     process.exit(0);
   }
 };

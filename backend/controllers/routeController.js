@@ -20,8 +20,8 @@ const getAllRoutes = async (req, res) => {
     }
 
     const [countResult] = await pool.execute(countQuery, countParams);
-    query += ` ORDER BY r.date_from DESC LIMIT ${limit} OFFSET ${offset}`;
-    const [routes] = await pool.execute(query, params);
+    query += ` ORDER BY r.date_from DESC LIMIT ${parseInt(limit)} OFFSET ${parseInt(offset)}`;
+    const [routes] = await pool.query(query, params);
 
     apiResponse(res, 200, { routes, pagination: { page, limit, total: countResult[0].total, totalPages: Math.ceil(countResult[0].total / limit) } });
   } catch (error) { console.error('Get routes error:', error); apiResponse(res, 500, { error: 'Failed to fetch routes.' }); }

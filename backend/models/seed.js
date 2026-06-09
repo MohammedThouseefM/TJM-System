@@ -1,7 +1,7 @@
 /**
  * Database Seed Script
  * Creates initial admin user and sample data
- * 
+ *
  * Usage: npm run seed
  */
 const mysql = require('mysql2/promise');
@@ -23,17 +23,20 @@ const seedDatabase = async () => {
     });
     console.log('✅ Connected');
 
-    // ── Create Admin User ────────────────────────────────────────
+    const today = new Date().toISOString().split('T')[0];
+
+    // ── Create Admin User ──────────────────────────────────────
     console.log('🔄 Creating admin user...');
     const adminPassword = await bcrypt.hash('admin123', 12);
-    
-    await connection.execute(`
-      INSERT IGNORE INTO users (name, email, password_hash, phone, role, status, joining_date)
-      VALUES (?, ?, ?, ?, 'admin', 'active', CURRENT_DATE)
-    `, ['Admin', 'admin@jamat.com', adminPassword, '+91-9876543210']);
-    console.log('   ✅ Admin user created (email: admin@jamat.com, password: admin123)');
 
-    // ── Create Sample Members ────────────────────────────────────
+    await connection.execute(`
+      INSERT INTO users (name, email, password_hash, phone, role, status, joining_date)
+      VALUES (?, ?, ?, ?, 'admin', 'active', ?)
+      ON DUPLICATE KEY UPDATE name = VALUES(name)
+    `, ['Admin', 'admin@jamat.com', adminPassword, '+91-9876543210', today]);
+    console.log('   ✅ Admin user ready (email: admin@jamat.com, password: admin123)');
+
+    // ── Create Sample Members ──────────────────────────────────
     console.log('🔄 Creating sample members...');
     const memberPassword = await bcrypt.hash('member123', 12);
 
@@ -48,23 +51,33 @@ const seedDatabase = async () => {
       ['Khalid Rahman', 'khalid@jamat.com', memberPassword, '+91-9876543218', 'member'],
     ];
 
-    for (const member of members) {
+    for (const [name, email, pwd, phone, role] of members) {
       await connection.execute(`
-        INSERT IGNORE INTO users (name, email, password_hash, phone, role, status, joining_date)
-        VALUES (?, ?, ?, ?, ?, 'active', CURRENT_DATE)
-      `, member);
+        INSERT INTO users (name, email, password_hash, phone, role, status, joining_date)
+        VALUES (?, ?, ?, ?, ?, 'active', ?)
+        ON DUPLICATE KEY UPDATE name = VALUES(name)
+      `, [name, email, pwd, phone, role, today]);
     }
-    console.log(`   ✅ ${members.length} sample members created (password: member123)`);
+    console.log(`   ✅ ${members.length} sample members ready (password: member123)`);
 
-    // ── Create Sample Announcements ──────────────────────────────
+    // ── Create Sample Announcements ────────────────────────────
     console.log('🔄 Creating sample announcements...');
-    await connection.execute(`
-      INSERT IGNORE INTO announcements (title, message, priority, created_by)
-      VALUES 
-        ('Welcome to Jamat Management', 'Assalamu Alaikum! Welcome to the Jamat Management System. All members are requested to update their profiles.', 'high', 1),
-        ('Daily Routine Reminder', 'Please ensure you check the daily task list every morning after Fajr salah.', 'medium', 1),
-        ('Upcoming Travel', 'InshaaAllah, our next journey is being planned. Route planners will update the details soon.', 'low', 1)
-    `);
+    // Get admin id
+    const [adminRows] = await connection.execute('SELECT id FROM users WHERE email = ?', ['admin@jamat.com']);
+    const adminId = adminRows[0]?.id || 1;
+
+    const announcements = [
+      ['Welcome to Jamat Management', 'Assalamu Alaikum! Welcome to the Jamat Management System. All members are requested to update their profiles.', 'high'],
+      ['Daily Routine Reminder', 'Please ensure you check the daily task list every morning after Fajr salah.', 'medium'],
+      ['Upcoming Travel', 'InshaaAllah, our next journey is being planned. Route planners will update the details soon.', 'low'],
+    ];
+
+    for (const [title, message, priority] of announcements) {
+      await connection.execute(`
+        INSERT INTO announcements (title, message, priority, created_by)
+        VALUES (?, ?, ?, ?)
+      `, [title, message, priority, adminId]);
+    }
     console.log('   ✅ Sample announcements created');
 
     console.log('\n🎉 Database seeded successfully!');

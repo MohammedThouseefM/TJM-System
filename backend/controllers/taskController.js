@@ -25,7 +25,7 @@ const getTasks = async (req, res) => {
 
     const [countResult] = await pool.execute(countQuery, countParams);
     query += ` ORDER BY t.task_date DESC, t.due_time ASC LIMIT ${limit} OFFSET ${offset}`;
-    const [tasks] = await pool.execute(query, params);
+    const [tasks] = await pool.query(query, params);
 
     apiResponse(res, 200, { tasks, pagination: { page, limit, total: countResult[0].total, totalPages: Math.ceil(countResult[0].total / limit) } });
   } catch (error) { console.error('Get tasks error:', error); apiResponse(res, 500, { error: 'Failed to fetch tasks.' }); }
