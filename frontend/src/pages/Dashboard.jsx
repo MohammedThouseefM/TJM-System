@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import { dashboardAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import StatsCard from '../components/StatsCard';
-import { HiUsers, HiCurrencyRupee, HiClipboardCheck, HiCalendar, HiMap, HiSpeakerphone } from 'react-icons/hi';
-import { MdAssignment } from 'react-icons/md';
+import { HiUsers, HiCurrencyRupee, HiClipboardCheck, HiCalendar, HiMap, HiSpeakerphone, HiExclamationCircle, HiCheckCircle, HiOutlineClock } from 'react-icons/hi';
+import { MdAssignment, MdArrowForward } from 'react-icons/md';
+import { Link } from 'react-router-dom';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, LineElement, PointElement, Title, Tooltip, Legend, Filler } from 'chart.js';
 import { Bar } from 'react-chartjs-2';
 
@@ -60,9 +61,14 @@ const Dashboard = () => {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
-      <div>
-        <h1 className="page-title">Assalamu Alaikum, {user?.name} 👋</h1>
-        <p className="text-surface-400 mt-1">{new Date().toLocaleDateString('en', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="page-title">Assalamu Alaikum, {user?.name} 👋</h1>
+          <p className="text-surface-400 mt-1">{new Date().toLocaleDateString('en', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+        </div>
+        <Link to="/finance" className="btn-primary flex items-center gap-2 px-6 shadow-lg shadow-primary-500/20">
+          <HiCurrencyRupee /> Quick Finance Entry
+        </Link>
       </div>
 
       {/* Stats Grid */}
@@ -70,17 +76,56 @@ const Dashboard = () => {
         <StatsCard icon={<HiUsers />} label="Active Members" value={d.activeMembers || 0} color="primary" />
         <StatsCard icon={<HiClipboardCheck />} label="Today's Tasks" value={`${d.tasks?.completed || 0}/${d.tasks?.total || 0}`} subtext={`${d.tasks?.pending || 0} pending`} color="blue" />
         <StatsCard icon={<HiCurrencyRupee />} label="Today's Expenses" value={`₹${Number(d.finance?.today_debits || 0).toLocaleString()}`} color="amber" />
-        <StatsCard icon={<HiCurrencyRupee />} label="Treasury Balance" value={`₹${Number(d.finance?.treasury_balance || 0).toLocaleString()}`} color="emerald" />
+        <StatsCard icon={<HiCurrencyRupee />} label="Treasury Balance" value={`₹${Number(d.finance?.treasury_balance || 0).toLocaleString()}`} subtext={d.finance?.pending_approvals > 0 ? `${d.finance.pending_approvals} pending approvals` : 'All cleared'} color="emerald" />
       </div>
 
       {/* Charts & Info */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Expense Chart */}
-        <div className="glass-card p-6">
-          <h2 className="text-lg font-semibold text-surface-200 mb-4">📊 7-Day Financial Trend</h2>
-          <div className="h-64">
-            {d.expenseTrend?.length > 0 ? <Bar data={chartData} options={chartOptions} /> : <p className="text-surface-500 text-center mt-20">No data yet</p>}
+        {/* Left Column */}
+        <div className="space-y-6">
+          {/* Expense Chart */}
+          <div className="glass-card p-6">
+            <h2 className="text-lg font-semibold text-surface-200 mb-4">📊 7-Day Financial Trend</h2>
+            <div className="h-64">
+              {d.expenseTrend?.length > 0 ? <Bar data={chartData} options={chartOptions} /> : <p className="text-surface-500 text-center mt-20">No data yet</p>}
+            </div>
           </div>
+
+          {/* Low Balance Alert */}
+          {d.lowBalanceMembers?.length > 0 && (
+            <div className="glass-card p-5 border border-red-500/30 relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-1 h-full bg-red-500"></div>
+              <h3 className="text-sm font-semibold text-red-400 mb-3 flex items-center gap-2"><HiExclamationCircle /> Low Member Balances</h3>
+              <p className="text-xs text-surface-400 mb-3">These members have balances below ₹{d.lowBalanceThreshold}</p>
+              <div className="space-y-2">
+                {d.lowBalanceMembers.map((m, i) => (
+                  <div key={i} className="flex items-center justify-between py-1 border-b border-surface-700/50 last:border-0">
+                    <span className="text-sm text-surface-200">{m.name}</span>
+                    <span className="text-sm font-bold text-red-400">₹{Number(m.balance||0).toLocaleString()}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Planned Expenses */}
+          {d.plannedExpenses?.length > 0 && (
+            <div className="glass-card p-5 border border-amber-500/20 relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-1 h-full bg-amber-500"></div>
+              <h3 className="text-sm font-semibold text-amber-400 mb-3 flex items-center gap-2"><HiOutlineClock /> Upcoming Expenses</h3>
+              <div className="space-y-3">
+                {d.plannedExpenses.map((p, i) => (
+                  <div key={i} className="flex justify-between items-center text-sm bg-surface-800/50 p-2.5 rounded-lg">
+                    <div>
+                      <span className="text-surface-200 font-medium block">{p.title}</span>
+                      <span className="text-xs text-surface-500">{new Date(p.planned_date).toLocaleDateString()}</span>
+                    </div>
+                    <span className="font-bold text-amber-400">₹{Number(p.amount||0).toLocaleString()}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Right Column */}

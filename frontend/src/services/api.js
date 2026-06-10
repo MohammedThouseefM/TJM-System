@@ -44,13 +44,23 @@ export const membersAPI = {
 
 // ── Finance API ──────────────────────────────────────────
 export const financeAPI = {
-  getTransactions: (params) => api.get('/finance/transactions', { params }),
-  addTransaction: (data) => api.post('/finance/transactions', data),
+  getTransactions: (p) => api.get('/finance/transactions', { params: p }),
+  addTransaction: (d) => api.post('/finance/transactions', d),
   deleteTransaction: (id) => api.delete(`/finance/transactions/${id}`),
+  getReceipt: (id) => api.get(`/finance/receipt/${id}`),
   getBalance: (userId) => api.get(`/finance/balance/${userId}`),
+  getBalances: () => api.get('/finance/balances'),
   getTreasury: () => api.get('/finance/treasury'),
   getDailyExpenses: (date) => api.get('/finance/daily', { params: { date } }),
-  exportCSV: (params) => api.get('/finance/export', { params, responseType: 'blob' }),
+  exportCSV: (p) => api.get('/finance/export', { params: p, responseType: 'blob' }),
+  getApprovals: () => api.get('/finance/approvals'),
+  processApproval: (id, d) => api.post(`/finance/approvals/${id}`, d),
+  transfer: (d) => api.post('/finance/transfer', d),
+  getPlanned: () => api.get('/finance/planned'),
+  addPlanned: (d) => api.post('/finance/planned', d),
+  updatePlanned: (id, d) => api.patch(`/finance/planned/${id}`, d),
+  getSettings: () => api.get('/finance/settings'),
+  updateSettings: (d) => api.put('/finance/settings', d),
 };
 
 // ── Routes API ───────────────────────────────────────────
@@ -105,6 +115,13 @@ export const announcementsAPI = {
 // ── Dashboard API ────────────────────────────────────────
 export const dashboardAPI = {
   getData: () => api.get('/dashboard'),
+};
+
+// ── Meal Split API ───────────────────────────────────────
+export const mealSplitAPI = {
+  getMeals: (date, meal_type) => api.get('/meal-split/meals', { params: { date, meal_type } }),
+  calculate: (data) => api.post('/meal-split/calculate', data),
+  generate: (data) => api.post('/meal-split/generate', data),
 };
 
 export default api;

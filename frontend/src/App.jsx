@@ -13,6 +13,7 @@ import DutyRoster from './pages/DutyRoster';
 import Attendance from './pages/Attendance';
 import Meals from './pages/Meals';
 import Announcements from './pages/Announcements';
+import MealSplit from './pages/MealSplit';
 
 const App = () => {
   const { user } = useAuth();
@@ -31,6 +32,7 @@ const App = () => {
         <Route path="/duties" element={<DutyRoster />} />
         <Route path="/attendance" element={<Attendance />} />
         <Route path="/meals" element={<Meals />} />
+        <Route path="/meal-split" element={<MealSplit />} />
         <Route path="/announcements" element={<Announcements />} />
       </Route>
 

@@ -41,6 +41,7 @@ app.use('/api/attendance', require('./routes/attendanceRoutes'));
 app.use('/api/meals', require('./routes/mealRoutes'));
 app.use('/api/announcements', require('./routes/announcementRoutes'));
 app.use('/api/dashboard', require('./routes/dashboardRoutes'));
+app.use('/api/meal-split', require('./routes/mealSplitRoutes'));
 
 // ── Health Check ─────────────────────────────────────────────────
 app.get('/api/health', (req, res) => {

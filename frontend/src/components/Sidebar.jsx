@@ -1,6 +1,6 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { HiHome, HiUsers, HiCurrencyRupee, HiMap, HiClipboardList, HiCalendar, HiUserGroup, HiSpeakerphone, HiLogout, HiX } from 'react-icons/hi';
+import { HiHome, HiUsers, HiCurrencyRupee, HiMap, HiClipboardList, HiCalendar, HiSpeakerphone, HiLogout, HiX } from 'react-icons/hi';
 import { MdFoodBank, MdAssignment } from 'react-icons/md';
 
 const Sidebar = ({ isOpen, onClose }) => {

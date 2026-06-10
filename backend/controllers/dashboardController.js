@@ -18,12 +18,12 @@ const getDashboardData = async (req, res) => {
 
     // Today's financial summary
     const [financeSummary] = await pool.execute(
-      `SELECT COALESCE(SUM(CASE WHEN type='credit' THEN amount ELSE 0 END),0) as today_credits, COALESCE(SUM(CASE WHEN type='debit' THEN amount ELSE 0 END),0) as today_debits FROM transactions WHERE transaction_date = ?`, [today]
+      `SELECT COALESCE(SUM(CASE WHEN type='credit' THEN amount ELSE 0 END),0) as today_credits, COALESCE(SUM(CASE WHEN type='debit' THEN amount ELSE 0 END),0) as today_debits FROM transactions WHERE transaction_date = ? AND deleted_at IS NULL AND status = 'approved'`, [today]
     );
 
     // Treasury balance
     const [treasury] = await pool.execute(
-      `SELECT COALESCE(SUM(CASE WHEN type='credit' THEN amount ELSE -amount END),0) as balance FROM transactions`
+      `SELECT COALESCE(SUM(CASE WHEN type='credit' THEN amount WHEN type='debit' AND (expense_source='treasury' OR expense_source IS NULL) THEN -amount ELSE 0 END),0) as balance FROM transactions WHERE deleted_at IS NULL AND status = 'approved'`
     );
 
     // Today's attendance
@@ -48,19 +48,44 @@ const getDashboardData = async (req, res) => {
 
     // Expense trend (last 7 days)
     const [expenseTrend] = await pool.execute(
-      `SELECT transaction_date as date, COALESCE(SUM(CASE WHEN type='debit' THEN amount ELSE 0 END),0) as expenses, COALESCE(SUM(CASE WHEN type='credit' THEN amount ELSE 0 END),0) as income FROM transactions WHERE transaction_date >= DATE_SUB(?, INTERVAL 7 DAY) GROUP BY transaction_date ORDER BY transaction_date`, [today]
+      `SELECT transaction_date as date, COALESCE(SUM(CASE WHEN type='debit' THEN amount ELSE 0 END),0) as expenses, COALESCE(SUM(CASE WHEN type='credit' THEN amount ELSE 0 END),0) as income FROM transactions WHERE transaction_date >= DATE_SUB(?, INTERVAL 7 DAY) AND deleted_at IS NULL AND status = 'approved' GROUP BY transaction_date ORDER BY transaction_date`, [today]
     );
+
+    // Pending Expense Approvals
+    const [pendingApprovals] = await pool.execute(
+      `SELECT COUNT(*) as count FROM expense_approvals WHERE status = 'pending'`
+    );
+
+    // Upcoming Planned Expenses
+    const [plannedExpenses] = await pool.execute(
+      `SELECT * FROM planned_expenses WHERE status = 'pending' AND planned_date >= ? ORDER BY planned_date ASC LIMIT 5`, [today]
+    );
+
+    // Low balance members
+    const [settingRes] = await pool.execute('SELECT setting_value FROM jamat_settings WHERE setting_key = "low_balance_alert"');
+    const threshold = parseFloat(settingRes[0]?.setting_value || '100');
+    const [lowBalanceMembers] = await pool.execute(`
+      SELECT u.name, COALESCE(SUM(CASE WHEN t.type='credit' THEN t.amount WHEN t.type='debit' AND t.expense_source='member' THEN -t.amount ELSE 0 END),0) as balance
+      FROM users u LEFT JOIN transactions t ON u.id = t.user_id AND t.deleted_at IS NULL AND t.status = 'approved'
+      WHERE u.status = 'active'
+      GROUP BY u.id
+      HAVING balance < ?
+      ORDER BY balance ASC LIMIT 5
+    `, [threshold]);
 
     apiResponse(res, 200, {
       today,
       activeMembers: membersCount[0].total,
       tasks: tasksSummary[0],
-      finance: { ...financeSummary[0], treasury_balance: treasury[0].balance },
+      finance: { ...financeSummary[0], treasury_balance: treasury[0].balance, pending_approvals: pendingApprovals[0].count },
       attendance: attendanceSummary[0],
       nextRoute: nextRoute[0] || null,
       announcements,
       duties,
-      expenseTrend
+      expenseTrend,
+      lowBalanceMembers,
+      plannedExpenses,
+      lowBalanceThreshold: threshold
     });
   } catch (error) { console.error('Dashboard error:', error); apiResponse(res, 500, { error: 'Failed to load dashboard.' }); }
 };
