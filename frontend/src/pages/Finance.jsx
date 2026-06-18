@@ -90,6 +90,7 @@ const Finance = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [receiptId, setReceiptId] = useState(null);
+  const [memberBalance, setMemberBalance] = useState(null);
 
   const [filters, setFilters] = useState({ type:'', category:'', user_id:'', date_from:'', date_to:'' });
   const [form, setForm] = useState({ user_ids:[], type:'credit', amount:'', description:'', category:'contribution', transaction_date: today, payment_method:'cash', expense_source:'treasury' });
@@ -113,6 +114,16 @@ const Finance = () => {
 
   useEffect(() => { fetchData(); }, [filters]);
   useEffect(() => { membersAPI.getAll({ limit:100 }).then(r => setMembers(r.data.members||[])).catch(()=>{}); }, []);
+
+  useEffect(() => {
+    if (filters.user_id) {
+      financeAPI.getBalance(filters.user_id)
+        .then(r => setMemberBalance(r.data.financials))
+        .catch(() => setMemberBalance(null));
+    } else {
+      setMemberBalance(null);
+    }
+  }, [filters.user_id]);
 
 
   const handleAdd = async (e) => {
@@ -178,6 +189,25 @@ const Finance = () => {
               <input type="date" value={filters.date_to} onChange={e=>setFilters({...filters,date_to:e.target.value})} className="input-field text-sm"/>
             </div>
           </div>
+
+          {memberBalance && (
+            <div className={`glass-card p-4 border-l-4 ${Number(memberBalance.balance) >= 0 ? 'border-primary-500' : 'border-red-500'} flex items-center justify-between`}>
+              <div>
+                <p className="text-sm font-semibold text-surface-200">Selected Member Balance</p>
+                <div className="flex gap-4 mt-1 text-xs">
+                  <span className="text-emerald-400">Contributed: ₹{fmt(memberBalance.total_credit)}</span>
+                  <span className="text-red-400">Expenses: ₹{fmt(memberBalance.total_debit)}</span>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-xs text-surface-400 mb-0.5">Net Balance</p>
+                <p className={`text-xl font-bold ${Number(memberBalance.balance) >= 0 ? 'text-primary-400' : 'text-red-400'}`}>
+                  {Number(memberBalance.balance) >= 0 ? '+' : ''}₹{fmt(memberBalance.balance)}
+                </p>
+              </div>
+            </div>
+          )}
+
           <div className="glass-card overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
