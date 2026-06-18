@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import Modal from '../components/Modal';
 import toast from 'react-hot-toast';
 import { HiPlus, HiDownload, HiTrash, HiSearch, HiCheck, HiX, HiUsers, HiReceiptRefund } from 'react-icons/hi';
-import { DailyTab, MealSplitTab, BalancesTab, ApprovalsTab, PlannedTab, ReceiptModal } from './FinanceTabPanels';
+import { ReceiptModal } from './FinanceTabPanels';
 import { useRef } from 'react';
 
 // ── Multi-select member picker ───────────────────────────────────
@@ -73,7 +73,7 @@ const MemberPicker = ({ members, selected, onChange }) => {
 };
 
 // ── Main Finance Page ────────────────────────────────────────────
-const TABS = ['Transactions', 'Daily Expenses', 'Meal Split', 'Balances', 'Approvals', 'Planned'];
+// Tabs removed
 const today = new Date().toISOString().split('T')[0];
 const categories = ['contribution','food','travel','accommodation','supplies','medical','communication','other'];
 const PAYMENT_METHODS = ['cash','bank','online','other'];
@@ -82,7 +82,7 @@ const fmt = (n) => Number(n||0).toLocaleString();
 
 const Finance = () => {
   const { isAccountant, isAdmin } = useAuth();
-  const [tab, setTab] = useState(0);
+
   const [transactions, setTransactions] = useState([]);
   const [members, setMembers] = useState([]);
   const [treasury, setTreasury] = useState(null);
@@ -90,7 +90,7 @@ const Finance = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [receiptId, setReceiptId] = useState(null);
-  const [approvalCount, setApprovalCount] = useState(0);
+
   const [filters, setFilters] = useState({ type:'', category:'', user_id:'', date_from:'', date_to:'' });
   const [form, setForm] = useState({ user_ids:[], type:'credit', amount:'', description:'', category:'contribution', transaction_date: today, payment_method:'cash', expense_source:'treasury' });
 
@@ -111,13 +111,9 @@ const Finance = () => {
     finally { setLoading(false); }
   };
 
-  useEffect(() => { if (tab === 0) fetchData(); }, [filters, tab]);
+  useEffect(() => { fetchData(); }, [filters]);
   useEffect(() => { membersAPI.getAll({ limit:100 }).then(r => setMembers(r.data.members||[])).catch(()=>{}); }, []);
-  useEffect(() => {
-    if (isAdmin || isAccountant) {
-      financeAPI.getApprovals().then(r => setApprovalCount(r.data.count||0)).catch(()=>{});
-    }
-  }, [tab]);
+
 
   const handleAdd = async (e) => {
     e.preventDefault();
@@ -168,20 +164,8 @@ const Finance = () => {
         </div>
       )}
 
-      {/* Tabs */}
-      <div className="flex gap-1 p-1 bg-surface-800/60 rounded-xl w-full overflow-x-auto">
-        {TABS.map((t, i) => (
-          <button key={t} onClick={() => setTab(i)}
-            className={`flex-1 min-w-max px-3 py-2 rounded-lg text-sm font-medium transition-all relative ${tab===i ? 'bg-primary-500 text-white shadow-lg' : 'text-surface-400 hover:text-surface-200'}`}>
-            {['📋','📅','🍽️','👤','✅','📆'][i]} {t}
-            {i===4 && approvalCount>0 && <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-amber-500 text-white text-xs flex items-center justify-center">{approvalCount}</span>}
-          </button>
-        ))}
-      </div>
-
-      {/* Tab 0: Transactions */}
-      {tab === 0 && (
-        <div className="space-y-4">
+      {/* Transactions */}
+      <div className="space-y-4">
           <div className="glass-card p-4">
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
               <select value={filters.type} onChange={e=>setFilters({...filters,type:e.target.value})} className="select-field text-sm"><option value="">All Types</option><option value="credit">Credit</option><option value="debit">Debit</option></select>
@@ -218,13 +202,7 @@ const Finance = () => {
             </div>
           </div>
         </div>
-      )}
-
-      {tab === 1 && <DailyTab />}
-      {tab === 2 && <MealSplitTab />}
-      {tab === 3 && <BalancesTab />}
-      {tab === 4 && <ApprovalsTab onRefresh={() => financeAPI.getApprovals().then(r=>setApprovalCount(r.data.count||0))} />}
-      {tab === 5 && <PlannedTab />}
+      
 
       {receiptId && <ReceiptModal transactionId={receiptId} onClose={()=>setReceiptId(null)} />}
 
