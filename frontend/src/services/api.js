@@ -75,7 +75,9 @@ export const routesAPI = {
 // ── Tasks API ────────────────────────────────────────────
 export const tasksAPI = {
   getAll: (params) => api.get('/tasks', { params }),
+  getMatrix: (params) => api.get('/tasks/matrix', { params }),
   create: (data) => api.post('/tasks', data),
+  assign: (data) => api.post('/tasks/assign', data),
   update: (id, data) => api.put(`/tasks/${id}`, data),
   updateStatus: (id, status) => api.patch(`/tasks/${id}/status`, { status }),
   delete: (id) => api.delete(`/tasks/${id}`),
