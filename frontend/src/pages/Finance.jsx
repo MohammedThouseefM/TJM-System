@@ -119,8 +119,11 @@ const Finance = () => {
     e.preventDefault();
     if (!form.user_ids.length) return toast.error('Select at least one member.');
     setSubmitting(true);
+    
+    const splitAmount = parseFloat(form.amount) / form.user_ids.length;
+
     try {
-      const res = await financeAPI.addTransaction({ user_ids: form.user_ids, type: form.type, amount: parseFloat(form.amount), description: form.description||undefined, category: form.category, transaction_date: form.transaction_date, payment_method: form.payment_method, expense_source: form.type==='debit' ? form.expense_source : undefined });
+      const res = await financeAPI.addTransaction({ user_ids: form.user_ids, type: form.type, amount: splitAmount, description: form.description||undefined, category: form.category, transaction_date: form.transaction_date, payment_method: form.payment_method, expense_source: form.type==='debit' ? form.expense_source : undefined });
       toast.success(res.data.message);
       if (res.data.needs_approval) toast('Expense queued for approval ⏳', { icon: '⏳' });
       setModalOpen(false);
@@ -140,8 +143,8 @@ const Finance = () => {
     } catch { toast.error('Export failed.'); }
   };
 
-  const totalPreview = form.user_ids.length && form.amount
-    ? (parseFloat(form.amount) * form.user_ids.length).toLocaleString('en-IN', { minimumFractionDigits:2 })
+  const splitPreview = form.user_ids.length && form.amount
+    ? (parseFloat(form.amount) / form.user_ids.length).toLocaleString('en-IN', { minimumFractionDigits:2, maximumFractionDigits:2 })
     : null;
 
   return (
@@ -222,7 +225,7 @@ const Finance = () => {
                 <option value="credit">💰 Credit (Contribution)</option><option value="debit">💸 Debit (Expense)</option>
               </select>
             </div>
-            <div><label className="block text-sm font-medium text-surface-300 mb-1">Amount (₹) *</label>
+            <div><label className="block text-sm font-medium text-surface-300 mb-1">Total Amount (₹) *</label>
               <input type="number" step="0.01" min="0.01" value={form.amount} onChange={e=>setForm({...form,amount:e.target.value})} className="input-field" required placeholder="0.00"/>
             </div>
           </div>
@@ -248,10 +251,10 @@ const Finance = () => {
           <div><label className="block text-sm font-medium text-surface-300 mb-1">Description</label>
             <input value={form.description} onChange={e=>setForm({...form,description:e.target.value})} className="input-field" placeholder="Optional..."/>
           </div>
-          {totalPreview && (
+          {splitPreview && form.user_ids.length > 1 && (
             <div className={`p-4 rounded-xl border ${form.type==='credit'?'bg-emerald-500/10 border-emerald-500/30':'bg-red-500/10 border-red-500/30'}`}>
-              <div className="flex justify-between text-sm"><span className="text-surface-400">Members: <strong className="text-surface-200">{form.user_ids.length}</strong></span><span className="text-surface-400">Each: <strong className="text-surface-200">₹{parseFloat(form.amount||0).toLocaleString()}</strong></span>
-                <span className="text-surface-400">Total: <strong className={form.type==='credit'?'text-emerald-400':'text-red-400'}>₹{totalPreview}</strong></span>
+              <div className="flex justify-between text-sm"><span className="text-surface-400">Total: <strong className="text-surface-200">₹{parseFloat(form.amount||0).toLocaleString()}</strong></span><span className="text-surface-400">Members: <strong className="text-surface-200">{form.user_ids.length}</strong></span>
+                <span className="text-surface-400">Each: <strong className={form.type==='credit'?'text-emerald-400':'text-red-400'}>₹{splitPreview}</strong></span>
               </div>
             </div>
           )}
