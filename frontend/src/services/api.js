@@ -49,6 +49,7 @@ export const financeAPI = {
   deleteTransaction: (id) => api.delete(`/finance/transactions/${id}`),
   getReceipt: (id) => api.get(`/finance/receipt/${id}`),
   getBalance: (userId) => api.get(`/finance/balance/${userId}`),
+  getMyBalance: () => api.get('/finance/my-balance'),
   getBalances: () => api.get('/finance/balances'),
   getTreasury: () => api.get('/finance/treasury'),
   getDailyExpenses: (date) => api.get('/finance/daily', { params: { date } }),

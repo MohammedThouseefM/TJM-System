@@ -204,6 +204,25 @@ const getAllMembersBalances = async (req, res) => {
   } catch(e) { apiResponse(res, 500, { error: 'Failed to fetch balances.' }); }
 };
 
+// ── GET /finance/my-balance ───────────────────────────────────────
+const getMyBalance = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const [r] = await pool.execute(`
+      SELECT
+        COALESCE(SUM(CASE WHEN type='credit' THEN amount ELSE 0 END),0) as total_credit,
+        COALESCE(SUM(CASE WHEN type='debit' AND expense_source='member' THEN amount ELSE 0 END),0) as total_debit,
+        COALESCE(SUM(CASE WHEN type='credit' THEN amount
+                          WHEN type='debit' AND expense_source='member' THEN -amount ELSE 0 END),0) as balance
+      FROM transactions WHERE user_id = ? AND deleted_at IS NULL AND status = 'approved'`, [userId]);
+    const [recent] = await pool.query(
+      `SELECT * FROM transactions WHERE user_id = ? AND deleted_at IS NULL AND status = 'approved' ORDER BY transaction_date DESC, created_at DESC LIMIT 10`,
+      [userId]
+    );
+    apiResponse(res, 200, { member: { name: req.user.name, email: req.user.email, role: req.user.role }, financials: r[0], recent_transactions: recent });
+  } catch(e) { apiResponse(res, 500, { error: 'Failed to fetch balance.' }); }
+};
+
 // ── GET /finance/treasury ─────────────────────────────────────────
 const getTreasuryBalance = async (req, res) => {
   try {
@@ -389,7 +408,7 @@ const updateSettings = async (req, res) => {
 };
 
 module.exports = {
-  getTransactions, addTransaction, getMemberBalance, getAllMembersBalances,
+  getTransactions, addTransaction, getMemberBalance, getMyBalance, getAllMembersBalances,
   getTreasuryBalance, getDailyExpenses, exportFinance, deleteTransaction,
   getApprovals, processApproval, treasuryTransfer,
   getPlannedExpenses, addPlannedExpense, updatePlannedExpense,

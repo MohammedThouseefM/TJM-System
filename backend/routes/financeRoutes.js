@@ -11,7 +11,8 @@ router.delete('/transactions/:id', authorize('admin','accountant'), ctrl.deleteT
 router.get('/receipt/:id', ctrl.getReceipt);
 
 // Balances
-router.get('/balances', ctrl.getAllMembersBalances);
+router.get('/my-balance', ctrl.getMyBalance);
+router.get('/balances', authorize('admin','accountant'), ctrl.getAllMembersBalances);
 router.get('/balance/:userId', ctrl.getMemberBalance);
 
 // Treasury

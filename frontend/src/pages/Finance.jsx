@@ -1,11 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { financeAPI, membersAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import Modal from '../components/Modal';
 import toast from 'react-hot-toast';
-import { HiPlus, HiDownload, HiTrash, HiSearch, HiCheck, HiX, HiUsers, HiReceiptRefund } from 'react-icons/hi';
+import { HiPlus, HiDownload, HiTrash, HiSearch, HiCheck, HiX, HiUsers, HiReceiptRefund, HiChevronDown, HiChevronUp, HiCurrencyRupee } from 'react-icons/hi';
 import { ReceiptModal } from './FinanceTabPanels';
-import { useRef } from 'react';
 
 // ── Multi-select member picker ───────────────────────────────────
 const MemberPicker = ({ members, selected, onChange }) => {
@@ -81,7 +80,7 @@ const EXPENSE_SOURCES = ['treasury','member'];
 const fmt = (n) => Number(n||0).toLocaleString();
 
 const Finance = () => {
-  const { isAccountant, isAdmin } = useAuth();
+  const { isAccountant, isAdmin, user } = useAuth();
 
   const [transactions, setTransactions] = useState([]);
   const [members, setMembers] = useState([]);
@@ -91,6 +90,13 @@ const Finance = () => {
   const [submitting, setSubmitting] = useState(false);
   const [receiptId, setReceiptId] = useState(null);
   const [memberBalance, setMemberBalance] = useState(null);
+
+  // Balance states
+  const [allBalances, setAllBalances] = useState([]);
+  const [myBalance, setMyBalance] = useState(null);
+  const [balancesLoading, setBalancesLoading] = useState(false);
+  const [showBalances, setShowBalances] = useState(true);
+  const [balanceSearch, setBalanceSearch] = useState('');
 
   const [filters, setFilters] = useState({ type:'', category:'', user_id:'', date_from:'', date_to:'' });
   const [form, setForm] = useState({ user_ids:[], type:'credit', amount:'', description:'', category:'contribution', transaction_date: today, payment_method:'cash', expense_source:'treasury' });
@@ -124,6 +130,24 @@ const Finance = () => {
       setMemberBalance(null);
     }
   }, [filters.user_id]);
+
+  // Fetch balances
+  useEffect(() => {
+    const fetchBalances = async () => {
+      setBalancesLoading(true);
+      try {
+        if (isAdmin || isAccountant) {
+          const res = await financeAPI.getBalances();
+          setAllBalances(res.data.members || []);
+        } else {
+          const res = await financeAPI.getMyBalance();
+          setMyBalance(res.data);
+        }
+      } catch { }
+      finally { setBalancesLoading(false); }
+    };
+    fetchBalances();
+  }, [isAdmin, isAccountant]);
 
 
   const handleAdd = async (e) => {
@@ -175,6 +199,101 @@ const Finance = () => {
           <div className="glass-card p-4 border-l-4 border-emerald-500"><p className="text-xs text-surface-400">Contributions</p><p className="text-xl font-bold text-emerald-400">₹{fmt(treasury.treasury?.total_contributions)}</p></div>
           <div className="glass-card p-4 border-l-4 border-red-500"><p className="text-xs text-surface-400">Expenses</p><p className="text-xl font-bold text-red-400">₹{fmt(treasury.treasury?.total_expenses)}</p></div>
           <div className="glass-card p-4 border-l-4 border-primary-500"><p className="text-xs text-surface-400">Treasury Balance</p><p className="text-xl font-bold text-primary-400">₹{fmt(treasury.treasury?.treasury_balance)}</p></div>
+        </div>
+      )}
+
+      {/* ── My Balance (for regular members) ── */}
+      {!isAdmin && !isAccountant && myBalance && (
+        <div className="glass-card p-5 border border-primary-500/30 relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-primary-500 to-emerald-400"></div>
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-500 to-emerald-400 flex items-center justify-center text-white font-bold text-lg">
+              {user?.name?.charAt(0) || '?'}
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-surface-100">My Account Balance</h3>
+              <p className="text-xs text-surface-500">{user?.name} • {user?.role?.replace('_',' ')}</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-4">
+            <div className="text-center p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+              <p className="text-xs text-surface-400 mb-1">Contributed</p>
+              <p className="text-lg font-bold text-emerald-400">₹{fmt(myBalance.financials?.total_credit)}</p>
+            </div>
+            <div className="text-center p-3 rounded-xl bg-red-500/10 border border-red-500/20">
+              <p className="text-xs text-surface-400 mb-1">Expenses</p>
+              <p className="text-lg font-bold text-red-400">₹{fmt(myBalance.financials?.total_debit)}</p>
+            </div>
+            <div className={`text-center p-3 rounded-xl border ${Number(myBalance.financials?.balance) >= 0 ? 'bg-primary-500/10 border-primary-500/20' : 'bg-red-500/10 border-red-500/20'}`}>
+              <p className="text-xs text-surface-400 mb-1">Net Balance</p>
+              <p className={`text-lg font-bold ${Number(myBalance.financials?.balance) >= 0 ? 'text-primary-400' : 'text-red-400'}`}>
+                {Number(myBalance.financials?.balance) >= 0 ? '+' : ''}₹{fmt(myBalance.financials?.balance)}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── All Members Balances (for admin/accountant) ── */}
+      {(isAdmin || isAccountant) && (
+        <div className="glass-card overflow-hidden">
+          <button onClick={() => setShowBalances(!showBalances)} className="w-full flex items-center justify-between p-4 hover:bg-surface-800/30 transition-colors">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary-500/20 to-emerald-400/20 flex items-center justify-center">
+                <HiCurrencyRupee className="text-primary-400" size={18}/>
+              </div>
+              <div className="text-left">
+                <h3 className="text-sm font-semibold text-surface-200">All Members Balances</h3>
+                <p className="text-xs text-surface-500">{allBalances.length} members</p>
+              </div>
+            </div>
+            {showBalances ? <HiChevronUp className="text-surface-400" size={20}/> : <HiChevronDown className="text-surface-400" size={20}/>}
+          </button>
+          {showBalances && (
+            <div className="px-4 pb-4">
+              {allBalances.length > 5 && (
+                <div className="relative mb-3">
+                  <HiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-surface-500" size={14}/>
+                  <input value={balanceSearch} onChange={e => setBalanceSearch(e.target.value)} placeholder="Search members..." className="w-full bg-surface-900 border border-surface-600 rounded-lg pl-9 pr-3 py-2 text-sm text-surface-200 focus:outline-none focus:border-primary-500"/>
+                </div>
+              )}
+              {balancesLoading ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {[1,2,3].map(i => <div key={i} className="h-24 skeleton rounded-xl"/>)}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {allBalances
+                    .filter(m => m.name.toLowerCase().includes(balanceSearch.toLowerCase()))
+                    .map(m => {
+                      const bal = Number(m.balance || 0);
+                      const isPositive = bal >= 0;
+                      return (
+                        <div key={m.id} className={`p-3.5 rounded-xl border transition-all duration-200 hover:shadow-lg ${isPositive ? 'bg-surface-800/40 border-surface-700/50 hover:border-primary-500/30' : 'bg-red-500/5 border-red-500/20 hover:border-red-500/40'}`}>
+                          <div className="flex items-center gap-2.5 mb-2.5">
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0 ${isPositive ? 'bg-gradient-to-br from-primary-500/70 to-emerald-400/70' : 'bg-gradient-to-br from-red-500/70 to-orange-400/70'}`}>
+                              {m.name.charAt(0)}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-surface-200 truncate">{m.name}</p>
+                              <p className="text-xs text-surface-500 capitalize">{m.role?.replace('_',' ')}</p>
+                            </div>
+                            <p className={`text-sm font-bold ${isPositive ? 'text-primary-400' : 'text-red-400'}`}>
+                              {isPositive ? '+' : ''}₹{fmt(bal)}
+                            </p>
+                          </div>
+                          <div className="flex gap-3 text-xs">
+                            <span className="text-emerald-400/80">↑ ₹{fmt(m.total_credit)}</span>
+                            <span className="text-red-400/80">↓ ₹{fmt(m.total_debit)}</span>
+                            <span className="text-surface-500 ml-auto">{m.tx_count} txns</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 
