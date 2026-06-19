@@ -65,7 +65,7 @@ const getDashboardData = async (req, res) => {
     const [settingRes] = await pool.execute('SELECT setting_value FROM jamat_settings WHERE setting_key = "low_balance_alert"');
     const threshold = parseFloat(settingRes[0]?.setting_value || '100');
     const [lowBalanceMembers] = await pool.execute(`
-      SELECT u.name, COALESCE(SUM(CASE WHEN t.type='credit' THEN t.amount WHEN t.type='debit' AND t.expense_source='member' THEN -t.amount ELSE 0 END),0) as balance
+      SELECT u.name, COALESCE(SUM(CASE WHEN t.type='credit' THEN t.amount WHEN t.type='debit' THEN -t.amount ELSE 0 END),0) as balance
       FROM users u LEFT JOIN transactions t ON u.id = t.user_id AND t.deleted_at IS NULL AND t.status = 'approved'
       WHERE u.status = 'active'
       GROUP BY u.id

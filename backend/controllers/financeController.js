@@ -171,9 +171,9 @@ const getMemberBalance = async (req, res) => {
     const [r] = await pool.execute(`
       SELECT
         COALESCE(SUM(CASE WHEN type='credit' THEN amount ELSE 0 END),0) as total_credit,
-        COALESCE(SUM(CASE WHEN type='debit' AND expense_source='member' THEN amount ELSE 0 END),0) as total_debit,
+        COALESCE(SUM(CASE WHEN type='debit' THEN amount ELSE 0 END),0) as total_debit,
         COALESCE(SUM(CASE WHEN type='credit' THEN amount
-                          WHEN type='debit' AND expense_source='member' THEN -amount ELSE 0 END),0) as balance
+                          WHEN type='debit' THEN -amount ELSE 0 END),0) as balance
       FROM transactions WHERE user_id = ? AND deleted_at IS NULL AND status = 'approved'`, [userId]);
     const [u] = await pool.execute('SELECT name, email, role FROM users WHERE id = ?', [userId]);
     const [recent] = await pool.query(
@@ -191,9 +191,9 @@ const getAllMembersBalances = async (req, res) => {
     const [rows] = await pool.query(`
       SELECT u.id, u.name, u.email, u.role, u.status,
         COALESCE(SUM(CASE WHEN t.type='credit' THEN t.amount ELSE 0 END),0) as total_credit,
-        COALESCE(SUM(CASE WHEN t.type='debit' AND t.expense_source='member' THEN t.amount ELSE 0 END),0) as total_debit,
+        COALESCE(SUM(CASE WHEN t.type='debit' THEN t.amount ELSE 0 END),0) as total_debit,
         COALESCE(SUM(CASE WHEN t.type='credit' THEN t.amount
-                          WHEN t.type='debit' AND t.expense_source='member' THEN -t.amount ELSE 0 END),0) as balance,
+                          WHEN t.type='debit' THEN -t.amount ELSE 0 END),0) as balance,
         COUNT(t.id) as tx_count
       FROM users u LEFT JOIN transactions t
         ON u.id = t.user_id AND t.deleted_at IS NULL AND t.status = 'approved'
@@ -211,9 +211,9 @@ const getMyBalance = async (req, res) => {
     const [r] = await pool.execute(`
       SELECT
         COALESCE(SUM(CASE WHEN type='credit' THEN amount ELSE 0 END),0) as total_credit,
-        COALESCE(SUM(CASE WHEN type='debit' AND expense_source='member' THEN amount ELSE 0 END),0) as total_debit,
+        COALESCE(SUM(CASE WHEN type='debit' THEN amount ELSE 0 END),0) as total_debit,
         COALESCE(SUM(CASE WHEN type='credit' THEN amount
-                          WHEN type='debit' AND expense_source='member' THEN -amount ELSE 0 END),0) as balance
+                          WHEN type='debit' THEN -amount ELSE 0 END),0) as balance
       FROM transactions WHERE user_id = ? AND deleted_at IS NULL AND status = 'approved'`, [userId]);
     const [recent] = await pool.query(
       `SELECT * FROM transactions WHERE user_id = ? AND deleted_at IS NULL AND status = 'approved' ORDER BY transaction_date DESC, created_at DESC LIMIT 10`,
